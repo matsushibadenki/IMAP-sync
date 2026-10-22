@@ -1,87 +1,121 @@
-# Imapsync Studio Desktop
+![Imapsync Studio showing multiple-account migration sheets](docs/screenshots/multiple-accounts.png)
 
-`../imapsync-web` を元にした Tauri 2 + Rust デスクトップアプリです。Node.js HTTP サーバーは使用しません。
+# Imapsync Studio
 
-## 開発・ビルド
+A desktop GUI for migrating email between IMAP servers, built with **Tauri 2, Rust, and Vite**. Transfer one account or queue multiple account pairs, preview commands, and monitor logs from a single window.
 
-Rust、Node.js、Tauri 2 のOS別ビルド要件、`imapsync` が必要です。
+*Screenshot: English interface with example account data. No real mailbox transfer is shown.*
+
+## Features
+
+- Single-account and multiple-account migration modes.
+- Two credential sheets with paired rows and spreadsheet paste support.
+- Shared server settings, dry runs, migration filters, and provider-friendly rate limits.
+- Always-visible preview, copy, start, stop, and progress controls.
+- TLS certificate and hostname verification for encrypted connections.
+- Password masking in previews and logs; passwords excluded from saved drafts.
+- English, Japanese, and Simplified Chinese interfaces.
+
+## Requirements
+
+- Node.js and npm.
+- Rust and the platform build prerequisites for Tauri 2.
+- A separately installed `imapsync` executable.
+
+On macOS, install imapsync with Homebrew:
 
 ```sh
-npm install
+brew install imapsync
+```
+
+The application looks for imapsync in `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`, and then `PATH`. macOS is the locally verified development platform; Windows and Linux runtime validation is pending.
+
+## Run locally
+
+```sh
+npm ci
 npm run tauri dev
+```
+
+Use the Tauri application for migration operations. The browser-only Vite interface does not provide the Rust backend needed to test connections or run imapsync.
+
+## Migrate a single account
+
+1. Open **Connections** and enter the source and destination host, port, and security mode. Typical ports are **993** for SSL/TLS and **143** for STARTTLS.
+2. Enter the username and password for each mailbox.
+3. Click **Test** on each side to check network and TLS connectivity. This check does not authenticate; authentication is tested when imapsync runs.
+4. Open **Migration Options**. Keep **Dry run** enabled for the first run and configure any filters or limits.
+5. Click **Preview**. The **Command Preview** tab opens automatically and shows the command with passwords masked. **Copy** copies that preview.
+6. Click **Start Sync** to run the dry run, then review **Logs** for authentication failures, folder mappings, and errors.
+7. After checking the results, turn off **Dry run** and click **Start Sync** to perform the migration.
+
+**Sync deletes** enables deletion of destination messages missing from the source. Enable it only when that behavior is intended.
+
+## Migrate multiple accounts
+
+1. In **Connections**, click **Multiple accounts** at the right end of the section heading.
+2. Enter the common source and destination server settings. These settings and the migration options apply to every pair.
+3. Fill in the **Username** and **Password** columns in both sheets. Source row 1 maps to destination row 1, row 2 maps to row 2, and so on.
+4. Use **Add row** to extend both sheets. Hover over a row number and click the × to remove that pair from both sheets.
+5. To paste from Excel or another spreadsheet, copy two columns—username followed by password—and paste into a username cell. Each pasted line fills a row. Up to **1,000 rows** are supported.
+6. Click **Preview** to review every account's command. Run a dry run first, then disable **Dry run** and start the actual migration.
+
+All rows are validated before any migration starts. Completely empty pairs are skipped; incomplete pairs and duplicate destination accounts are rejected.
+
+Pairs run **one at a time, from top to bottom**. An account failure is recorded and the queue continues; the overall run reports an error if any account fails. A process-launch failure stops the queue. **Stop** cancels the current process and all remaining pairs.
+
+Row-number colors indicate running, successful, or failed accounts. The logs include row numbers and exit codes, while the top area shows the processed account count and aggregate transfer metrics. Hover over a row number for its result.
+
+Click **Multiple accounts** again to return to single-account mode.
+
+## Monitor, stop, and resume
+
+- **Logs** displays runtime output, errors, and generated commands. Filter by errors or commands, and toggle automatic scrolling.
+- Transfer counts come from imapsync's output. Error counts display `—` until imapsync reports a summary. Only the latest 1,200 log lines are retained, but aggregate counts remain available for the current run.
+- The application stays in the stopping state until the process exits. On macOS/Linux, it sends TERM and forces termination after five seconds if necessary. Windows uses process termination.
+- After a stopped or failed run, review the logs and restart with the same settings. There is no automatic retry.
+- Keep the existing imapsync cache, especially when using **Compare by UID**. The app uses `$HOME/tmp`, or its local application data directory if `HOME` is unavailable. Avoid concurrent runs against the same mailbox.
+- **Fast mode** skips the initial and final folder-size scans. It does not change how message identity is compared.
+
+Settings, usernames, and the selected mode are restored from the saved draft. Passwords must be re-entered after restarting. During a run, passwords are passed through private temporary files rather than command-line arguments. Those files are deleted when the process finishes; an abnormal application termination may leave temporary files behind.
+
+Use the language button beside **Sample** to cycle through Japanese, English, and Simplified Chinese. Hover over an **ⓘ** icon for help.
+
+## Build
+
+```sh
 npm run tauri build
 ```
 
-macOS の生成物: `src-tauri/target/release/bundle/`。
-`imapsync` は Homebrew 等で別途インストールしてください。アプリは `/opt/homebrew/bin`、`/usr/local/bin`、`/usr/bin`、PATH の順に検索します。
+Build outputs are under `src-tauri/target/release/bundle/`. The application currently requires imapsync to be installed separately.
 
-## 操作
-
-進捗と実行ボタンを上部に常時表示し、接続設定、移行オプション、ログ、実行前チェック、コマンドプレビューをタブで切り替えます。タブは矢印キーでも切り替えられます。説明は ⓘ にマウスを重ねて表示します。
-
-日本語・English・简体中文を右上で切り替えられます。接続設定を入力してプレビューし、ドライランで確認してから実行してください。接続テストは TCP/TLS/STARTTLS の疎通確認です。認証の確認は実際のドライランで行います。
-
-### 複数アカウント
-
-接続設定見出しの右端にある「複数アカウント」で切り替えます。転送元・転送先のホスト／ポート／暗号化方式は共通とし、それぞれのシートへユーザー名とパスワードを入力します。左右の同じ行が転送ペアです。
-
-- 行の追加・削除は左右のシートに同時適用します。行番号にマウスを重ねると削除ボタンになります。Excelなどからユーザー名／パスワードの2列を貼り付けできます。最大1000行です。
-- プレビューは全ペアのコマンドを表示します。開始前に全行を検証し、片側の不足や転送先アカウントの重複があれば実行を開始しません。両側とも空の行はスキップします。
-- 上から1件ずつ実行します。アカウントの失敗は記録して次を続け、全体の結果はエラーとして表示します。停止は実行中の処理と未実行の残りを中止します。起動そのものに失敗した場合も残りを中止します。
-- 行番号の色で実行中・成功・失敗を表示し、ログに行番号と個別の終了コードを残します。上部の件数はバッチ全体の合計です。
-- ユーザー名とモードは保存します。単一入力とシートのパスワードはローカル保存せず、再起動後は再入力します。
-
-## 構成
-
-- WebView: 既存画面を引き継いだ HTML/CSS/JavaScript。Vite でビルド。
-- Rust Document: 設定、子プロセス、終了コード、最大1200行のログ。
-- Rust: 引数生成、検証、TCP/TLS/STARTTLS、imapsync の起動・停止・終了回収。
-- ウインドウ: タブで画面を切り替え、入力・プロセス情報は Tauri IPC でRustと連携。
-
-パスワードは設定のローカル保存から除外し、Rust共有メモリに保持します。実行時は権限を制限した一時ディレクトリのパスワードファイルを使い、終了時に削除します。異常強制終了後は一時ファイルが残る場合があります。ログとプレビューはパスワードを伏せ字にし、imapsync のディスクログを無効にします。
-
-追加引数は安全に扱えるオプションの許可リスト方式です。任意の実行オプションや認証引数の上書きは拒否します。同期・進捗は実際の出力を表示し、実行中の推測パーセントは表示しません。
-
-このツールはメール移行を扱い、削除同期は転送先のメールを削除します。初回はドライランを使用してください。
-
-### 移行の実行と再開
-
-- 暗号化方式は選択値を明示して実行し、TLS接続では証明書とホスト名を検証します。高速モードは開始・終了時のフォルダ容量集計だけを省略します。
-- 停止要求後もプロセスが終了するまで実行中として扱います。macOS/Linuxでは終了シグナルを送り、5秒後も応答しない場合は強制終了します。Windowsではプロセス終了を要求します。
-- パスワードとPIDファイルは実行ごとの一時ディレクトリに置き、終了時に削除します。再開に必要なUIDキャッシュは削除しません。既存のimapsyncと同じ `$HOME/tmp` を使用し、HOMEがない環境のみアプリのローカルデータ領域を使用します。UID比較を使用する場合はキャッシュを保持し、同じメールボックスへの同時実行を避けてください。
-- 失敗・停止後はログを確認し、同じ設定で再実行できます。自動再試行は行いません。ドライラン完了・停止・異常終了は別の状態として表示します。
-- 転送件数はコピー結果と終了時の集計から取得します。エラー数はimapsyncの集計が届くまで「—」です。1200行を超えてログが省略されても件数を維持し、終了後の経過時間は固定します。
-
-
-## 検証
+## Development checks
 
 ```sh
 npm run build
-cargo test --manifest-path src-tauri/Cargo.toml
-cargo check --manifest-path src-tauri/Cargo.toml
+cargo test --offline --manifest-path src-tauri/Cargo.toml
+cargo clippy --offline --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
+
+The installed-imapsync option check is opt-in and does not connect to a mailbox:
+
+```sh
+cargo test --offline --manifest-path src-tauri/Cargo.toml installed_imapsync_accepts_generated_options -- --ignored --nocapture
+```
+
+See [VALIDATION.md](VALIDATION.md) for the tested scenarios and remaining validation work.
 
 ## Roadmap
 
-- 🟢 [Done] Tauri 2 + Rust、5タブ、共有設定、ログ・起動・停止、3言語
-- 🟢 [Done] TLS証明書検証、秘密情報の伏せ字、パスワードを除く下書き保存
-- 🟢 [Done] 複数アカウントシート、2列貼り付け、逐次転送キュー、アカウントごとの結果表示
-- 🔴 [Later] 署名・公証、imapsync の同梱配布
-- ⭕️ [Pending] 実メールサーバーでの認証・転送・削除同期検証（テストアカウント未提供）
+- 🟢 [Done] Tauri 2 / Rust execution backend, five workspace tabs, and three UI languages.
+- 🟢 [Done] Single-account migration, credential sheets, spreadsheet paste, sequential account queues, and per-account results.
+- 🟢 [Done] Command previews, TLS verification, private password files, cancellation, and aggregate metrics.
+- 🔴 [Later] Signed/notarized releases and investigation of bundled imapsync distribution.
+- ⭕️ [Pending] Live-server authentication, message/attachment integrity, resume behavior, and deletion tests with disposable accounts.
+- ⭕️ [Pending] Windows/Linux runtime and packaging verification.
 
-## English
+## License
 
-A Tauri 2 / Rust desktop port of imapsync-web. Five workspace tabs share one application window. Rust owns the shared document, process and logs. Run `npm install`, then `npm run tauri dev`; package with `npm run tauri build`. Install imapsync separately. Connection tests check reachability and TLS, not authentication. Start with dry run. Passwords are excluded from saved drafts.
+This project's code is licensed under the [MIT License](LICENSE).
 
-## 简体中文
-
-基于 imapsync-web 的 Tauri 2 / Rust 桌面应用。五个工作区标签在同一窗口内切换，Rust 管理共享设置、进程和日志。运行 `npm install` 和 `npm run tauri dev`，使用 `npm run tauri build` 打包。需另行安装 imapsync。连接测试检查网络和 TLS，不验证账户密码。请先试运行。保存草稿时不保存密码。
-
-
-Execution notes: TLS verifies certificates and hostnames. Fast mode skips folder-size scans. Stop waits for process exit (TERM, then a five-second force-stop fallback on macOS/Linux). Per-run password files are removed; the existing `$HOME/tmp` UID cache is retained for resuming. Keep that cache and avoid concurrent runs against the same mailbox. Dry-run completion, cancellation and failure have distinct states. Error counts remain unknown until imapsync reports them.
-
-执行说明：TLS 验证证书及主机名；快速模式跳过文件夹容量统计。停止操作会等待进程退出（macOS/Linux 先发送 TERM，五秒后仍未退出则强制结束）。每次执行的密码文件会删除，原有 `$HOME/tmp` UID 缓存会保留以便继续迁移。请保留缓存，并避免同时迁移同一邮箱。试运行完成、停止和失败分别显示；imapsync 尚未报告错误总数时显示「—」。
-
-Multiple accounts: Toggle the button in the Connections heading. Enter usernames and passwords in the two sheets; matching row numbers form a pair. Hosts and migration options are shared. Paste two columns from a spreadsheet, add/remove paired rows, then preview or start. All rows are validated first and run sequentially. Account failures are recorded while remaining pairs continue; Stop cancels the rest. Passwords are never persisted locally.
-
-多个账户：点击连接设置标题右侧的按钮，在来源和目标表格中填写用户名与密码。相同行号为一组，共用服务器与迁移选项。支持粘贴两列及成对增删行。开始前验证所有行，再按顺序执行；单个账户失败会记录并继续，停止会取消剩余任务。密码不保存到本地。
+imapsync is a separate executable. It and all third-party dependencies retain their own licenses.
