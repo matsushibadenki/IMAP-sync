@@ -1,1 +1,1 @@
-{"identifier":"workspace","description":"Local workspace windows","windows":["main","panel-*"],"permissions":["core:default"]}
+{"identifier":"workspace","description":"Main application window","windows":["main"],"permissions":["core:default"]}

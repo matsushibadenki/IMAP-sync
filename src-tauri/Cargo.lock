@@ -1470,12 +1470,14 @@ name = "imapsync-studio"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "libc",
  "native-tls",
  "serde",
  "serde_json",
  "shell-words",
  "tauri",
  "tauri-build",
+ "tempfile",
 ]
 
 [[package]]
