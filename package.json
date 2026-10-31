@@ -1,0 +1,20 @@
+{
+  "name": "imapsync-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "tauri": "tauri",
+    "engine:deps": "node scripts/install-imapsync-deps.mjs",
+    "engine:prepare": "node scripts/prepare-imapsync.mjs",
+    "engine:perl": "node scripts/bootstrap-perl.mjs",
+    "engine:openssl": "node scripts/bootstrap-openssl.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "vite": "^6.0.0"
+  },
+  "license": "MIT"
+}

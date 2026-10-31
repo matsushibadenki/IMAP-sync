@@ -1,0 +1,5 @@
+# Test-only IMAP server. Install into an isolated Python 3.11+ environment.
+pymap==0.36.7
+proxy-protocol==0.11.3
+pysasl==1.2.0
+typing_extensions==4.16.0
